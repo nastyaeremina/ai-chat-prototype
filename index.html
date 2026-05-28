@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AI Chat — Loading State</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@lottiefiles/dotlottie-wc@0.6.2/dist/dotlottie-wc.js" type="module"></script>
+  <link rel="preconnect" href="https://rsms.me/">
+  <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+  <style>
+    :root {
+      --bg-primary: #ffffff;
+      --bg-secondary-hover: #eff1f4;
+      --gray-100: #f8f9fb;
+      --border: #dfe1e4;
+      --text-primary: #212b36;
+      --text-secondary: #6b6f76;
+      --text-placeholder: #90959d;
+      --text-link: #0c41bb;
+    }
+    html, body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+    body { background: #f0f2f5; }
+    .text-body-sm { font-size: 13px; line-height: 21px; }
+    .text-body-md { font-size: 14px; line-height: 22px; }
+    .text-heading-sm { font-size: 13px; line-height: 21px; font-weight: 500; }
+
+    /* Toggle styles */
+    .state-toggle {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      display: flex;
+      gap: 4px;
+      background: white;
+      padding: 4px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      border: 1px solid var(--border);
+      z-index: 10;
+    }
+    .state-toggle button {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      background: transparent;
+      border: none;
+    }
+    .state-toggle button.active {
+      background: var(--gray-100);
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    /* Shimmer for skeleton lines */
+    @keyframes shimmer {
+      0% { background-position: -200px 0; }
+      100% { background-position: 200px 0; }
+    }
+    .skeleton-line {
+      height: 10px;
+      border-radius: 4px;
+      background: linear-gradient(90deg, #eef0f3 0%, #f5f6f8 50%, #eef0f3 100%);
+      background-size: 400px 100%;
+      animation: shimmer 1.4s linear infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="state-toggle">
+    <button id="btn-thinking" class="active" onclick="setState('thinking')">Thinking</button>
+    <button id="btn-timer" onclick="setState('timer')">Timer</button>
+    <button id="btn-loaded" onclick="setState('loaded')">Loaded</button>
+  </div>
+  <div class="state-toggle" style="top: 64px;">
+    <button id="btn-v1" class="active" onclick="setVersion('v1')">v1</button>
+    <button id="btn-v2" onclick="setVersion('v2')">v2 (stable square)</button>
+  </div>
+
+  <!-- AI Chat sidebar, 400px wide -->
+  <div class="mx-auto my-6 bg-white border border-solid border-[var(--border)] w-[400px] min-h-[840px] flex flex-col rounded-md overflow-hidden">
+
+    <!-- Conversation -->
+    <div class="flex-1 overflow-y-auto px-5 pt-5 flex flex-col gap-3 items-end">
+
+      <!-- User message -->
+      <div class="flex w-[336px] items-end">
+        <div class="flex-1 min-w-0">
+          <div class="bg-[var(--gray-100)] rounded-lg px-2.5 py-1.5 max-w-[368px]">
+            <p class="text-body-sm text-[var(--text-primary)] break-words">
+              Build a time tracking app to log hours, track work across clients and projects, and generate clear reports for billing and productivity insights. Include timers, manual entries, and weekly summaries.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Assistant intro -->
+      <p class="text-body-md text-[var(--text-primary)] w-full">
+        Got it! I'll build this for you. Before we start, I have a few quick questions to make sure this fits your workflow.
+      </p>
+
+      <!-- Summarized questions -->
+      <div class="bg-[var(--gray-100)] rounded-lg px-4 py-3 w-[336px] flex flex-col gap-3">
+        <div class="flex flex-col gap-0.5 w-full">
+          <p class="text-body-md text-[var(--text-primary)]">Will this app be visible to your clients?</p>
+          <p class="text-body-sm text-[var(--text-secondary)]">Show in my Client Portal</p>
+        </div>
+        <div class="flex flex-col gap-0.5 w-full">
+          <p class="text-body-md text-[var(--text-primary)]">What key details should each time entry include?</p>
+          <p class="text-body-sm text-[var(--text-secondary)]">Billable Hours, Notes</p>
+        </div>
+      </div>
+
+      <!-- Plan card — only shown when loaded -->
+      <div id="plan-card" class="hidden bg-white border border-solid border-[var(--border)] rounded-lg rounded-tr-lg p-3 w-full overflow-hidden">
+        <div id="plan-loaded" class="flex flex-col gap-3">
+          <div class="text-[var(--text-primary)]">
+            <p class="text-heading-sm">Plan</p>
+            <p class="text-heading-sm mt-3">Overview</p>
+            <p class="text-body-sm mt-0.5">
+              A client-facing proposal builder app for Second Workspacer that lets the internal team create polished proposals from reusable templates, send them to individual applicants, and track whether each applicant has viewed and accepted the proposal. It centralizes drafting, applicant delivery, view status, and built-in signature/acceptance so the team can move proposals from draft to signed without switching tools.
+            </p>
+            <p class="text-heading-sm mt-3">Audience and Roles</p>
+            <p class="text-body-sm mt-0.5">completed proposals. Applicants open the proposal in…</p>
+          </div>
+          <a href="#" class="text-body-md text-[var(--text-link)] no-underline">Show more</a>
+        </div>
+      </div>
+
+      <!-- Three thinking variants. Single lottie + single check svg are
+           always mounted to avoid hidden-init sizing bugs. -->
+      <div id="thinking-row" class="flex gap-2 items-center w-full">
+        <!-- ICON: lottie shows for thinking + timer, hidden for loaded -->
+        <dotlottie-wc id="thinking-icon"
+          src="animation-v2.lottie"
+          autoplay loop speed="1"
+          class="shrink-0"
+          style="width: 20px; height: 20px; display: block; aspect-ratio: 1 / 1;">
+        </dotlottie-wc>
+        <!-- ICON: checkmark only shown for loaded -->
+        <svg id="thinking-check" class="hidden shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none">
+          <path d="M5 12.5l4.5 4.5L19 7.5" stroke="#212b36" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <!-- LABEL: changes per state -->
+        <p class="text-body-md text-[var(--text-placeholder)]">
+          <span id="label-thinking">Thinking…</span>
+          <span id="label-timer" class="hidden tabular-nums"><span id="thinking-timer">0s</span></span>
+          <span id="label-loaded" class="hidden tabular-nums"><span id="thinking-final">0s</span></span>
+        </p>
+      </div>
+
+      <div class="h-5"></div>
+    </div>
+
+    <!-- Chat input -->
+    <div class="bg-white px-5 pt-3 pb-5">
+      <div class="bg-white border border-solid border-[var(--border)] rounded-lg overflow-hidden">
+        <div class="flex flex-col gap-4 p-3">
+          <div class="flex h-[22px] items-start gap-0.5">
+            <p class="text-body-sm text-[var(--text-placeholder)] flex-1">
+              <span class="text-[var(--text-primary)]">|</span>Write a message
+            </p>
+          </div>
+          <div class="flex h-7 items-center justify-between">
+            <!-- Left: plus button -->
+            <div class="border border-solid border-[var(--border)] rounded p-1.5 flex items-center">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M8 3.5v9M3.5 8h9" stroke="#212b36" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <!-- Right: mic + send -->
+            <div class="flex gap-2 items-center">
+              <div class="p-1.5 rounded-md">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <rect x="6" y="2" width="4" height="9" rx="2" stroke="#212b36" stroke-width="1.5"/>
+                  <path d="M3 8a5 5 0 0 0 10 0M8 13v2" stroke="#212b36" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+              </div>
+              <div class="bg-[var(--bg-secondary-hover)] rounded p-1.5 flex items-center justify-center w-7 h-7">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M3 8L13 3L8 13L7 9L3 8Z" stroke="#90959d" stroke-width="1.5" stroke-linejoin="round"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Timer that counts up while in "timer" state.
+    let timerStart = null;
+    let timerInterval = null;
+    const timerEl = () => document.getElementById('thinking-timer');
+    const finalEl = () => document.getElementById('thinking-final');
+
+    function startTimer() {
+      stopTimer();
+      timerStart = performance.now();
+      timerEl().textContent = '0s';
+      timerInterval = setInterval(() => {
+        const s = Math.floor((performance.now() - timerStart) / 1000);
+        timerEl().textContent = `${s}s`;
+      }, 1000);
+    }
+
+    function stopTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = null;
+    }
+
+    const STATES = ['thinking', 'timer', 'loaded'];
+
+    function setVersion(v) {
+      const icon = document.getElementById('thinking-icon');
+      const srcMap = {
+        v1: 'animation-v2.lottie',
+        v2: 'animation-v3.lottie',
+      };
+      icon.setAttribute('src', srcMap[v]);
+      ['v1', 'v2'].forEach(k => {
+        document.getElementById(`btn-${k}`).classList.toggle('active', k === v);
+      });
+    }
+
+    function setState(state) {
+      // Toggle the three label spans
+      STATES.forEach(s => {
+        document.getElementById(`label-${s}`).classList.toggle('hidden', s !== state);
+        document.getElementById(`btn-${s}`).classList.toggle('active', s === state);
+      });
+      // Icon: lottie for thinking/timer, check for loaded
+      const isLoaded = state === 'loaded';
+      document.getElementById('thinking-icon').classList.toggle('hidden', isLoaded);
+      document.getElementById('thinking-check').classList.toggle('hidden', !isLoaded);
+      // Plan card only visible in the loaded state.
+      document.getElementById('plan-card').classList.toggle('hidden', state !== 'loaded');
+
+      // Timer lifecycle.
+      if (state === 'timer') {
+        startTimer();
+      } else if (state === 'loaded') {
+        stopTimer();
+        const elapsed = timerStart
+          ? Math.max(1, Math.floor((performance.now() - timerStart) / 1000))
+          : 2;
+        finalEl().textContent = `${elapsed}s`;
+      } else {
+        stopTimer();
+      }
+    }
+  </script>
+</body>
+</html>
