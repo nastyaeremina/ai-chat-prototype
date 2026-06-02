@@ -214,6 +214,10 @@
 
     const STATES = ['thinking', 'timer', 'loaded'];
 
+    // Track the v3 pause timer so we can cancel when switching versions.
+    let v3PauseTimer = null;
+    const V3_PULSE_MS = 5000;   // pulse for ~5s, then settle on final frame.
+
     function setVersion(v) {
       const icon = document.getElementById('thinking-icon');
       const srcMap = {
@@ -221,16 +225,20 @@
         v2: 'animation-v3.lottie',
         v3: 'animation-v2.lottie',   // same morph as v1...
       };
-      // ...but v3 plays once and holds on the final frame.
-      if (v === 'v3') {
-        icon.removeAttribute('loop');
-      } else {
-        icon.setAttribute('loop', '');
-      }
+      // Always start looping; v3 stops after the pulse window.
+      icon.setAttribute('loop', '');
       icon.setAttribute('src', srcMap[v]);
       ['v1', 'v2', 'v3'].forEach(k => {
         document.getElementById(`btn-${k}`).classList.toggle('active', k === v);
       });
+
+      clearTimeout(v3PauseTimer);
+      if (v === 'v3') {
+        v3PauseTimer = setTimeout(() => {
+          // Pause the lottie on whatever frame it's on — feels like a settle.
+          try { icon.pause && icon.pause(); } catch (_) {}
+        }, V3_PULSE_MS);
+      }
     }
 
     function setState(state) {
