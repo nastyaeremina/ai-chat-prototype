@@ -76,6 +76,7 @@
   <div class="state-toggle" style="top: 64px;">
     <button id="btn-v1" class="active" onclick="setVersion('v1')">v1</button>
     <button id="btn-v2" onclick="setVersion('v2')">v2 (stable square)</button>
+    <button id="btn-v3" onclick="setVersion('v3')">v3 (pulse once)</button>
   </div>
 
   <!-- AI Chat sidebar, 400px wide -->
@@ -218,9 +219,16 @@
       const srcMap = {
         v1: 'animation-v2.lottie',
         v2: 'animation-v3.lottie',
+        v3: 'animation-v2.lottie',   // same morph as v1...
       };
+      // ...but v3 plays once and holds on the final frame.
+      if (v === 'v3') {
+        icon.removeAttribute('loop');
+      } else {
+        icon.setAttribute('loop', '');
+      }
       icon.setAttribute('src', srcMap[v]);
-      ['v1', 'v2'].forEach(k => {
+      ['v1', 'v2', 'v3'].forEach(k => {
         document.getElementById(`btn-${k}`).classList.toggle('active', k === v);
       });
     }
